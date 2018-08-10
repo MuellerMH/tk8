@@ -32,13 +32,13 @@ Create, delete and show current status of the deployment that is running on AWS.
 Kindly ensure that terraform is installed also.`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-
+		aws := cluster.NewAWS("DefineWorkspace")
 		if install {
 			cluster.AWSInstall()
 		}
 
 		if create {
-			cluster.AWSCreate()
+			aws.Create()
 		}
 
 		if destroy {
