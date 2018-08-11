@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"html/template"
+	"io"
+	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -97,10 +99,10 @@ func (aws *AWS) DistSelect() (string, string) {
 
 	// TODO change to parallel creation
 	// prepare config
-	if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-variables.tf", "./"+aws.Namespace+"/variables.tf", awsInstanceOS, nil) {
+	if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-variables.tf", "variables.tf", awsInstanceOS, nil) {
 		return "", ""
 	}
-	if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-create-infra.tf", "./"+aws.Namespace+"/create-infrastructure.tf", awsInstanceOS, nil) {
+	if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-create-infra.tf", "create-infrastructure.tf", awsInstanceOS, nil) {
 		return "", ""
 	}
 
@@ -150,6 +152,24 @@ func (aws *AWS) GetClusterConfig() ClusterConfig {
 	}
 }
 
+func (aws *AWS) prepareBuilderFiles() {
+
+	_ = os.Mkdir(aws.GetAbsPath(".")+"/"+aws.Namespace, os.ModePerm)
+
+	files, err := ioutil.ReadDir("./kubespray/contrib/terraform/aws/")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, f := range files {
+		inFileReader, _ := os.Open("./kubespray/contrib/terraform/aws/" + f.Name())
+		defer inFileReader.Close()
+		outWriter, _ := os.Open(aws.GetAbsPath(".") + "/" + aws.Namespace + "/" + f.Name())
+		defer outWriter.Close()
+		io.Copy(outWriter, inFileReader)
+	}
+}
+
 // Create a aws kubernetes cluster with terraform
 func (aws *AWS) Create() {
 	if !aws.OSHelper.CheckDependency("terraform") {
@@ -160,12 +180,15 @@ func (aws *AWS) Create() {
 	if err != nil {
 		return // cancel process
 	}
+
+	aws.prepareBuilderFiles()
+
 	if _, err := aws.OSHelper.FileInfo("/configs/templates/credentials.tfvars"); err != nil {
-		if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-credentials.tfvars", "./"+aws.Namespace+"/credentials.tfvars", aws.Namespace, aws.GetCredentials()) {
+		if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-credentials.tfvars", "credentials.tfvars", aws.Namespace, aws.GetCredentials()) {
 			return // cancel process
 		}
 	}
-	if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-terraform.tfvars", "./"+aws.Namespace+"/terraform.tfvars", aws.Namespace, aws.GetClusterConfig()) {
+	if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-terraform.tfvars", "terraform.tfvars", aws.Namespace, aws.GetClusterConfig()) {
 		return // cancel process
 	}
 
