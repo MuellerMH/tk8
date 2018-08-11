@@ -5,29 +5,32 @@ import (
 	"log"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 // UnixHelper provied some methods for unix
 type UnixHelper struct {
 }
 
+// FatalLog for logging Fatal errors
 func (h UnixHelper) FatalLog(v ...interface{}) {
 	log.Fatal(v)
 }
 
+// Log for logging output
 func (h UnixHelper) Log(v ...interface{}) {
 	log.Print(v)
 }
 
+// FileInfo to get information of a file
 func (h UnixHelper) FileInfo(file string) (string, error) {
 	fileInfo, err := os.Stat(file)
-	fileInfoJson, _ := json.Marshal(fileInfo)
-	return string(fileInfoJson), err
+	fileInfoJSON, _ := json.Marshal(fileInfo)
+	return string(fileInfoJSON), err
 }
 
-func (h UnixHelper) Shell(v ...string) (*exec.Cmd, error) {
-	rr := exec.Command(strings.Join(v, " "))
+// Shell to execute operstion on the os shell
+func (h UnixHelper) Shell(cmd string, v ...string) (*exec.Cmd, error) {
+	rr := exec.Command(cmd, v...)
 	logString, err := rr.Output()
 	if err != nil {
 		h.FatalLog(err)
@@ -37,10 +40,7 @@ func (h UnixHelper) Shell(v ...string) (*exec.Cmd, error) {
 	return rr, err
 }
 
-func (h UnixHelper) GetOs() string {
-	return "unix"
-}
-
+// CheckDependency checked if the dependency is installed
 func (h UnixHelper) CheckDependency(dependecy string) bool {
 	_, err := exec.LookPath(dependecy)
 	if err != nil {

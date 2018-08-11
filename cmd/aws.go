@@ -17,6 +17,8 @@ package cmd
 import (
 	"os"
 
+	"github.com/kubernauts/tk8/internal/cluster/oshelper"
+
 	"github.com/kubernauts/tk8/internal/cluster"
 	"github.com/spf13/cobra"
 )
@@ -32,7 +34,9 @@ Create, delete and show current status of the deployment that is running on AWS.
 Kindly ensure that terraform is installed also.`,
 	Args: cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		aws := cluster.NewAWS("DefineWorkspace")
+
+		aws := cluster.NewAWS("DefineWorkspace", cluster.DistOSMap, oshelper.NewOSHelper())
+
 		if install {
 			cluster.AWSInstall()
 		}

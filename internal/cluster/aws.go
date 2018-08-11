@@ -43,14 +43,9 @@ type AwsCredentials struct {
 	AwsDefaultRegion string
 }
 
-// Init prepare some configs for the aws deployment
-func (aws *AWS) Init() {
-	aws.Dists = DistOSMap
-	aws.OSHelper = oshelper.NewOSHelper()
-}
-
 // create config files from templates
 func (aws *AWS) createFileFromTemplate(templateName string, targetFileName string, awsInstanceOS string, data interface{}) bool {
+	_ = os.Mkdir("./"+aws.Namespace+"/variables.tf", os.ModePerm)
 	file, err := os.Create(targetFileName)
 	if err != nil {
 		aws.OSHelper.FatalLog("Cannot create file", err)
@@ -74,7 +69,7 @@ func (aws *AWS) createFileFromTemplate(templateName string, targetFileName strin
 }
 
 // load configs from viper
-func (aws *AWS) getConfig() (string, string, string) {
+func (aws *AWS) GetConfig() (string, string, string) {
 	//Read Configuration File
 	viper.SetConfigName("config")
 
@@ -93,7 +88,7 @@ func (aws *AWS) getConfig() (string, string, string) {
 // DistSelect choose the Dist and return sshUser and osLabel
 func (aws *AWS) DistSelect() (string, string) {
 
-	awsAmiID, awsInstanceOS, sshUser := aws.getConfig()
+	awsAmiID, awsInstanceOS, sshUser := aws.GetConfig()
 
 	if awsAmiID != "" && sshUser != "" {
 		awsInstanceOS = "custom"
@@ -172,9 +167,6 @@ func (aws *AWS) GetClusterConfig() ClusterConfig {
 }
 
 func (aws *AWS) Create() {
-	if aws.OSHelper == nil {
-		aws.Init()
-	}
 	if !aws.OSHelper.CheckDependency("terraform") {
 		return
 	}
@@ -224,9 +216,9 @@ func (aws *AWS) Create() {
 }
 
 // NewAWS is the AWS Constructor
-func NewAWS(namespace string) AWS {
+func NewAWS(namespace string, distOS map[string]DistOS, oshelper oshelper.OSHelper) AWS {
 
-	aws := AWS{Namespace: namespace}
+	aws := AWS{Namespace: namespace, Dists: distOS, OSHelper: oshelper}
 	return aws
 }
 func AWSInstall() {
