@@ -25,7 +25,7 @@ data "aws_ami" "distro" {
 
   filter {
     name   = "name"
-    values = ["{{.OS}}"]
+    values = ["dcos-centos7-*"]
   }
 
   filter {
@@ -33,7 +33,7 @@ data "aws_ami" "distro" {
     values = ["hvm"]
   }
 
-  owners = ["{{.AmiOwner}}"] #CoreOS
+  owners = ["688023202711"] #CoreOS
 }
 
 //AWS VPC Variables

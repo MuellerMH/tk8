@@ -15,6 +15,7 @@
 package cluster
 
 import (
+	"C"
 	"bufio"
 	"fmt"
 	"html/template"
@@ -26,6 +27,10 @@ import (
 
 	"github.com/kubernauts/tk8/internal/cluster/oshelper"
 	"github.com/spf13/viper"
+)
+import (
+	"path"
+	"path/filepath"
 )
 
 // AWS is the main structer of the platform controller
@@ -43,18 +48,27 @@ type AwsCredentials struct {
 	AwsDefaultRegion string
 }
 
-// create config files from templates
-func (aws *AWS) createFileFromTemplate(templateName string, targetFileName string, awsInstanceOS string, data interface{}) bool {
-	_ = os.Mkdir("./"+aws.Namespace+"/variables.tf", os.ModePerm)
+func GetRootPath() string {
+	e, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	path := path.Dir(e)
+	fmt.Println(path)
+	return path
+}
+
+// CreateFileFromTemplate create config files from templates
+func (aws *AWS) CreateFileFromTemplate(templateName string, targetFileName string, awsInstanceOS string, data interface{}) bool {
+	absPath, _ := filepath.Abs("../../" + templateName)
+	_ = os.Mkdir(aws.Namespace, os.ModePerm)
 	file, err := os.Create(targetFileName)
 	if err != nil {
 		aws.OSHelper.FatalLog("Cannot create file", err)
 		return false
 	}
 	defer file.Close()
-
-	template := template.New(awsInstanceOS)
-	template, err = template.Parse(templateName)
+	template := template.Must(template.ParseFiles(absPath))
 	if err != nil {
 		aws.OSHelper.FatalLog(templateName, "for", awsInstanceOS, "could not parsed")
 		return false
@@ -65,15 +79,15 @@ func (aws *AWS) createFileFromTemplate(templateName string, targetFileName strin
 	}
 	template.Execute(file, data)
 	return true
-	//TODO save StdOut as targetFileName
 }
 
-// load configs from viper
+// GetConfig configs from viper
 func (aws *AWS) GetConfig() (string, string, string) {
 	//Read Configuration File
 	viper.SetConfigName("config")
-
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("/tk8")
+	viper.AddConfigPath("./../..")
 	verr := viper.ReadInConfig() // Find and read the config file
 	if verr != nil {             // Handle errors reading the config file
 		log.Fatal("config could not readed")
@@ -111,10 +125,10 @@ func (aws *AWS) DistSelect() (string, string) {
 		return "", ""
 	}
 	// prepare config
-	if !aws.createFileFromTemplate("/configs/templates/kubespray-aws-variables.tf", "./"+aws.Namespace+"/variables.tf", awsInstanceOS, nil) {
+	if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-variables.tf", "./"+aws.Namespace+"/variables.tf", awsInstanceOS, nil) {
 		return "", ""
 	}
-	if !aws.createFileFromTemplate("/configs/templates/kubespray-aws-create-infra.tf", "./"+aws.Namespace+"/create-infrastructure.tf", awsInstanceOS, nil) {
+	if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-create-infra.tf", "./"+aws.Namespace+"/create-infrastructure.tf", awsInstanceOS, nil) {
 		return "", ""
 	}
 
@@ -124,9 +138,9 @@ func (aws *AWS) DistSelect() (string, string) {
 func (aws *AWS) GetCredentials() AwsCredentials {
 	//Read Configuration File
 	viper.SetConfigName("config")
-
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("/tk8")
+	viper.AddConfigPath("./../..")
 	verr := viper.ReadInConfig() // Find and read the config file
 	if verr != nil {             // Handle errors reading the config file
 		panic(fmt.Errorf("fatal error config file: %s", verr))
@@ -142,8 +156,9 @@ func (aws *AWS) GetCredentials() AwsCredentials {
 func (aws *AWS) GetClusterConfig() ClusterConfig {
 	//Read Configuration File
 	viper.SetConfigName("config")
-
 	viper.AddConfigPath(".")
+	viper.AddConfigPath("/tk8")
+	viper.AddConfigPath("./../..")
 	verr := viper.ReadInConfig() // Find and read the config file
 	if verr != nil {             // Handle errors reading the config file
 		panic(fmt.Errorf("fatal error config file: %s", verr))
@@ -176,11 +191,11 @@ func (aws *AWS) Create() {
 		return // cancel process
 	}
 	if _, err := aws.OSHelper.FileInfo("/configs/templates/credentials.tfvars"); err != nil {
-		if !aws.createFileFromTemplate("/configs/templates/kubespray-aws-credentials.tfvars", "./"+aws.Namespace+"/credentials.tfvars", aws.Namespace, aws.GetCredentials()) {
+		if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-credentials.tfvars", "./"+aws.Namespace+"/credentials.tfvars", aws.Namespace, aws.GetCredentials()) {
 			return // cancel process
 		}
 	}
-	if !aws.createFileFromTemplate("/configs/templates/kubespray-aws-terraform.tfvars", "./"+aws.Namespace+"/terraform.tfvars", aws.Namespace, aws.GetClusterConfig()) {
+	if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-terraform.tfvars", "./"+aws.Namespace+"/terraform.tfvars", aws.Namespace, aws.GetClusterConfig()) {
 		return // cancel process
 	}
 
