@@ -40,8 +40,8 @@ func (aws *AWS) GetAbsPath(filePath string) string {
 // CreateFileFromTemplate create config files from templates
 func (aws *AWS) CreateFileFromTemplate(templateName string, targetFileName string, awsInstanceOS string, data interface{}) bool {
 
-	_ = os.Mkdir(aws.Namespace, os.ModePerm)
-	file, err := os.Create(targetFileName)
+	_ = os.Mkdir(aws.GetAbsPath(".")+"/"+aws.Namespace, os.ModePerm)
+	file, err := os.Create(aws.GetAbsPath(".") + "/" + aws.Namespace + "/" + targetFileName)
 	if err != nil {
 		aws.OSHelper.FatalLog("Cannot create file", err)
 		return false
@@ -206,6 +206,7 @@ func NewAWS(namespace string, distOS map[string]DistOS, oshelper oshelper.OSHelp
 	aws := AWS{Namespace: namespace, Dists: distOS, OSHelper: oshelper}
 	return aws
 }
+
 func AWSInstall() {
 	// check if ansible is installed
 	terr, err := exec.LookPath("ansible")

@@ -41,7 +41,7 @@ func TestAWS_CreateFileFromTemplate(t *testing.T) {
 				oshelper.NewOSHelper(),
 			},
 			args{
-				"configs/templates/kubespray-aws-variables.tf", "testcase/variables.tf", "centos", nil,
+				"configs/templates/kubespray-aws-variables.tf", "variables.tf", "centos", nil,
 			},
 			true,
 		},
@@ -60,7 +60,7 @@ func TestAWS_CreateFileFromTemplate(t *testing.T) {
 				oshelper.NewOSHelper(),
 			},
 			args{
-				"configs/templates/kubespray-aws-create-infra.tf", "testcase/create-infrastructer.tf", "centos", nil,
+				"configs/templates/kubespray-aws-create-infra.tf", "create-infrastructer.tf", "centos", nil,
 			},
 			true,
 		},
@@ -79,7 +79,7 @@ func TestAWS_CreateFileFromTemplate(t *testing.T) {
 				oshelper.NewOSHelper(),
 			},
 			args{
-				"configs/templates/kubespray-aws-terraform.tfvars", "testcase/terraform.tfvars", "centos", nil,
+				"configs/templates/kubespray-aws-terraform.tfvars", "terraform.tfvars", "centos", nil,
 			},
 			true,
 		},
@@ -98,7 +98,7 @@ func TestAWS_CreateFileFromTemplate(t *testing.T) {
 				oshelper.NewOSHelper(),
 			},
 			args{
-				"configs/templates/kubespray-aws-credentials.tfvars", "testcase/credentials.tfvars", "centos", nil,
+				"configs/templates/kubespray-aws-credentials.tfvars", "credentials.tfvars", "centos", nil,
 			},
 			true,
 		},
