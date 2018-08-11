@@ -1,21 +1,6 @@
-// Copyright © 2018 NAME HERE <EMAIL ADDRESS>
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package cluster
 
 import (
-	"C"
 	"bufio"
 	"fmt"
 	"html/template"
@@ -25,12 +10,10 @@ import (
 	"os/exec"
 	"strings"
 
+	"path/filepath"
+
 	"github.com/kubernauts/tk8/internal/cluster/oshelper"
 	"github.com/spf13/viper"
-)
-import (
-	"path"
-	"path/filepath"
 )
 
 // AWS is the main structer of the platform controller
@@ -48,19 +31,15 @@ type AwsCredentials struct {
 	AwsDefaultRegion string
 }
 
-func GetRootPath() string {
-	e, err := os.Executable()
-	if err != nil {
-		panic(err)
-	}
-	path := path.Dir(e)
-	fmt.Println(path)
-	return path
+// GetAbsPath return the absoltue path of a file somewhere in the folder structure
+func (aws *AWS) GetAbsPath(filePath string) string {
+	absPath, _ := filepath.Abs("../../" + filePath)
+	return absPath
 }
 
 // CreateFileFromTemplate create config files from templates
 func (aws *AWS) CreateFileFromTemplate(templateName string, targetFileName string, awsInstanceOS string, data interface{}) bool {
-	absPath, _ := filepath.Abs("../../" + templateName)
+
 	_ = os.Mkdir(aws.Namespace, os.ModePerm)
 	file, err := os.Create(targetFileName)
 	if err != nil {
@@ -68,7 +47,7 @@ func (aws *AWS) CreateFileFromTemplate(templateName string, targetFileName strin
 		return false
 	}
 	defer file.Close()
-	template := template.Must(template.ParseFiles(absPath))
+	template := template.Must(template.ParseFiles(aws.GetAbsPath(templateName)))
 	if err != nil {
 		aws.OSHelper.FatalLog(templateName, "for", awsInstanceOS, "could not parsed")
 		return false
@@ -83,16 +62,7 @@ func (aws *AWS) CreateFileFromTemplate(templateName string, targetFileName strin
 
 // GetConfig configs from viper
 func (aws *AWS) GetConfig() (string, string, string) {
-	//Read Configuration File
-	viper.SetConfigName("config")
-	viper.AddConfigPath(".")
-	viper.AddConfigPath("/tk8")
-	viper.AddConfigPath("./../..")
-	verr := viper.ReadInConfig() // Find and read the config file
-	if verr != nil {             // Handle errors reading the config file
-		log.Fatal("config could not readed")
-		return "", "", ""
-	}
+	aws.readViperConfigFile("config")
 	awsAmiID := viper.GetString("aws.ami_id")
 	awsInstanceOS := viper.GetString("aws.os")
 	sshUser := viper.GetString("aws.ssh_user")
@@ -124,6 +94,8 @@ func (aws *AWS) DistSelect() (string, string) {
 		log.Fatal("SSH Username is required when using custom AMI")
 		return "", ""
 	}
+
+	// TODO change to parallel creation
 	// prepare config
 	if !aws.CreateFileFromTemplate("/configs/templates/kubespray-aws-variables.tf", "./"+aws.Namespace+"/variables.tf", awsInstanceOS, nil) {
 		return "", ""
@@ -134,10 +106,9 @@ func (aws *AWS) DistSelect() (string, string) {
 
 	return sshUser, awsInstanceOS
 }
-
-func (aws *AWS) GetCredentials() AwsCredentials {
+func (aws *AWS) readViperConfigFile(configName string) {
 	//Read Configuration File
-	viper.SetConfigName("config")
+	viper.SetConfigName(configName)
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("/tk8")
 	viper.AddConfigPath("./../..")
@@ -145,6 +116,11 @@ func (aws *AWS) GetCredentials() AwsCredentials {
 	if verr != nil {             // Handle errors reading the config file
 		panic(fmt.Errorf("fatal error config file: %s", verr))
 	}
+}
+
+// GetCredentials get the aws credentials from config file
+func (aws *AWS) GetCredentials() AwsCredentials {
+	aws.readViperConfigFile("config")
 	return AwsCredentials{
 		AwsAccessKeyID:   viper.GetString("aws.aws_access_key_id"),
 		AwsSecretKey:     viper.GetString("aws.aws_secret_access_key"),
@@ -153,16 +129,9 @@ func (aws *AWS) GetCredentials() AwsCredentials {
 	}
 }
 
+// GetClusterConfig get the configuration from config file
 func (aws *AWS) GetClusterConfig() ClusterConfig {
-	//Read Configuration File
-	viper.SetConfigName("config")
-	viper.AddConfigPath(".")
-	viper.AddConfigPath("/tk8")
-	viper.AddConfigPath("./../..")
-	verr := viper.ReadInConfig() // Find and read the config file
-	if verr != nil {             // Handle errors reading the config file
-		panic(fmt.Errorf("fatal error config file: %s", verr))
-	}
+	aws.readViperConfigFile("config")
 	return ClusterConfig{
 		AwsClusterName:               viper.GetString("aws.clustername"),
 		AwsVpcCidrBlock:              viper.GetString("aws.aws_vpc_cidr_block"),
@@ -181,6 +150,7 @@ func (aws *AWS) GetClusterConfig() ClusterConfig {
 	}
 }
 
+// Create a aws kubernetes cluster with terraform
 func (aws *AWS) Create() {
 	if !aws.OSHelper.CheckDependency("terraform") {
 		return
@@ -264,6 +234,8 @@ func AWSInstall() {
 		fmt.Println("Configuration folder already exists")
 	} else {
 		//os.MkdirAll("./kubespray/inventory/awscluster/group_vars", 0755)
+
+		//TODO: os.Rename to move files
 		exec.Command("cp", "-rfp", "./kubespray/inventory/sample/", "./kubespray/inventory/awscluster/").Run()
 
 		exec.Command("cp", "./kubespray/inventory/hosts", "./kubespray/inventory/awscluster/hosts").Run()
